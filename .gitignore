@@ -1,0 +1,7 @@
+
+*.out
+*.sublime-project
+*.sublime-workspace
+**/*.vice/**
+**/.ipynb_checkpoints/**
+
