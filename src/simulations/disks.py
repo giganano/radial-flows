@@ -18,12 +18,18 @@ from vice.yields.presets import JW20
 from vice.toolkit import hydrodisk
 vice.yields.sneia.settings['fe'] *= 10**0.1
 from .._globals import END_TIME, MAX_SF_RADIUS, ZONE_WIDTH
+from . import gasflows
 from . import migration
 from . import models
+from . import yields
+from . import sfe
 from .models.utils import get_bin_number, interpolate
 from .models.gradient import gradient
+import warnings
 import math as m
 import sys
+
+MIGRATION_PAUSE = 1 # Gyr - no radial flows until 1 Gyr has passed
 
 
 class diskmodel(vice.milkyway):
@@ -83,6 +89,74 @@ class diskmodel(vice.milkyway):
 		self.evolution = star_formation_history(spec = spec,
 			zone_width = zone_width)
 		self.mode = "sfr"
+		for i in range(self.n_zones):
+			self.zones[i].eta = 0
+			area = m.pi * ZONE_WIDTH**2 * ((i + 1)**2 - i**2)
+			self.zones[i].tau_star = sfe.sfe(area, mode = "sfr")
+
+		# setup radial gas flow
+		vgas_engine = gasflows.river(self,
+			outfilename = "%s_gasvelocities.out" % (self.name))
+		# vgas_engine = gasflows.constant(-1,
+		# 	outfilename = "%s_gasvelocities.out" % (self.name))
+		vgas_alltimes = []
+		times = [self.dt * i for i in range(int(END_TIME / self.dt) + 10)]
+		for i in range(len(times)):
+			if i > MIGRATION_PAUSE / self.dt:
+				radii, vgas = vgas_engine(i * self.dt)
+				vgas_alltimes.append(vgas)
+			else:
+				radii = [zone_width * i for i in range(self.n_zones)]
+				vgas = len(radii) * [0.]
+				vgas_alltimes.append(vgas)
+		matrix_elements_inward = []
+		matrix_elements_outward = []
+		for i in range(self.n_zones):
+			yvals_inward = []
+			yvals_outward = []
+			vgas = [row[i] for row in vgas_alltimes]
+			for j in range(len(times)):
+				if j > MIGRATION_PAUSE / self.dt:
+					radius = i * zone_width
+					if vgas[j] > 0: # outward flow
+						numerator = 2 * (radius + zone_width) * vgas[j] * 0.01
+						numerator -= vgas[j]**2 * 0.01**2
+					else: # inward flow
+						numerator = vgas[j]**2 * 0.01**2
+						numerator -= 2 * radius * vgas[j] * self.dt
+						# numerator -= 2 * radius * zone_width + zone_width**2
+					denominator = 2 * radius * zone_width + zone_width**2
+					areafrac = numerator / denominator
+					if areafrac * self.dt / 0.01 > 1:
+						warnings.warn("""\
+Area fraction larger than 1. Consider comparing results with different \
+timestep sizes to assess the impact of numerical artifacts.""")
+						areafrac = 0.01 / self.dt - 1.e-9
+					elif areafrac < 0:
+						areafrac = 1.e-9
+					else: pass
+					if vgas[j] > 0:
+						yvals_outward.append(areafrac)
+						yvals_inward.append(1.e-10)
+					else:
+						yvals_outward.append(1.e-10)
+						yvals_inward.append(areafrac)
+				else:
+					yvals_outward.append(1.e-10)
+					yvals_inward.append(1.e-10)
+			matrix_elements_outward.append(
+				gasflows.driver(times, yvals_outward, dt = self.dt))
+			matrix_elements_inward.append(
+				gasflows.driver(times, yvals_inward, dt = self.dt))
+		for i in range(self.n_zones):
+			for j in range(self.n_zones):
+				if i - 1 == j: # inward flows
+					self.migration.gas[i][j] = matrix_elements_inward[i]
+				elif i + 1 == j: # outward flows
+					self.migration.gas[i][j] = matrix_elements_outward[i]
+				else:
+					self.migration.gas[i][j] = 0
+
 
 
 	def run(self, *args, **kwargs):

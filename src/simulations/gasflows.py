@@ -4,16 +4,36 @@ Handles radial gas flows in these models.
 
 from .._globals import MAX_SF_RADIUS
 from .models.utils import get_bin_number
+from vice.toolkit.interpolation import interp_scheme_1d
 from vice.milkyway.milkyway import _MAX_RADIUS_ as MAX_RADIUS # 20 kpc
 import numpy as np
 import vice
+
+
+class driver(interp_scheme_1d):
+
+	def __init__(self, *args, dt = 0.01, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.dt = dt
+	
+	def __call__(self, x):
+		test = super().__call__(x) * self.dt / 0.01
+		if test < 0:
+			return 0
+		elif test > 1:
+			return 1
+		else:
+			return test
 
 
 class base:
 
 	def __init__(self, outfilename = "gasvelocities.out"):
 		if outfilename is not None:
-			self.outfile = open(outfile, "w")
+			self.outfile = open(outfilename, "w")
+			self.outfile.write("# Time [Gyr]    ")
+			self.outfile.write("Radius [kpc]    ")
+			self.outfile.write("ISM radial velocity [kpc/Gyr]\n")
 		else:
 			self.outfile = None
 
@@ -30,9 +50,23 @@ class base:
 	def write(self, time, radii, velocities):
 		if self.outfile is not None:
 			for i in range(len(radii)):
-				self.outfile.write("%.2e\t%.2e\t%.2e\n" % (
+				self.outfile.write("%.5e\t%.5e\t%.5e\n" % (
 					time, radii[i], velocities[i]))
 		else: pass
+
+
+class constant(base):
+
+	def __init__(self, speed, outfilename = "gasvelocities.out"):
+		super().__init__(outfilename = outfilename)
+		self.speed = speed
+
+
+	def __call__(self, time, dr = 0.1, dt = 0.01):
+		radii = [dr * i for i in range(int(MAX_RADIUS / dr))]
+		vgas = len(radii) * [self.speed]
+		self.write(time, radii, vgas)
+		return [radii, vgas]
 
 
 class river(base):
@@ -82,13 +116,21 @@ River model currently supports star formation mode.""")
 		Mg_dr = sfr_dr * self.mw_model.zones[1].tau_star(time, sfr_dr)
 		Mg_dr *= 1.e9 # yr^-1 -> Gyr^-1 conversion in SFR
 
-		if callable(self.mw_model[0].eta):
-			eta = self.mw_model[0].eta(time)
+		if callable(self.mw_model.zones[0].eta):
+			eta = self.mw_model.zones[0].eta(time)
 		else:
-			eta = self.mw_model[0].eta
+			eta = self.mw_model.zones[0].eta
 		x = (dMg + 1.e9 * sfr * dt * (1 + eta - recycling)) / Mg_dr
 		vgas = 1 - np.sqrt(1 + 3 * x)
 		vgas *= dr / dt
+		if abs(time - 0.11) < 1.e-3:
+			print("============================================")
+			print(dMg + 1.e9 * sfr * dt * (1 + eta - recycling))
+			print(Mg_dr)
+			print(vgas)
+			print(Mg_dr * (vgas**2 * dt**2 - 2 * dr * vgas * dt) / (3 * dr**2))
+			print("============================================")
+		else: pass
 		return vgas # kpc / Gyr
 
 
@@ -116,10 +158,10 @@ River model currently supports star formation mode.""")
 			# this is the last zone and the calculation is stopping here anyway
 			dlnmgas_dr = -1 / dr # (mgas_next -> 0)
 
-		if callable(self.mw_model[0].eta):
-			eta = self.mw_model[0].eta(time)
+		if callable(self.mw_model.zones[0].eta):
+			eta = self.mw_model.zones[0].eta(time)
 		else:
-			eta = self.mw_model[0].eta
+			eta = self.mw_model.zones[0].eta
 
 		dvdr = -dlnmgas_dt
 		dvdr -= (1 + eta - recycling) / tau_star

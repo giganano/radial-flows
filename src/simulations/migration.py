@@ -1,5 +1,8 @@
 
+from .._globals import ZONE_WIDTH, END_TIME
 from vice.toolkit import hydrodisk
+import math as m
+import random
 
 
 class diskmigration(hydrodisk.hydrodiskstars):
