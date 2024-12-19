@@ -2,11 +2,12 @@ r"""
 Handles radial gas flows in these models.
 """
 
-from .._globals import MAX_SF_RADIUS
+from .._globals import MAX_SF_RADIUS, END_TIME
 from .models.utils import get_bin_number
 from vice.toolkit.interpolation import interp_scheme_1d
 from vice.milkyway.milkyway import _MAX_RADIUS_ as MAX_RADIUS # 20 kpc
 import numpy as np
+import warnings
 import vice
 
 
@@ -26,9 +27,12 @@ class driver(interp_scheme_1d):
 			return test
 
 
+
 class base:
 
-	def __init__(self, outfilename = "gasvelocities.out"):
+	NORMTIME = 0.01 # Gyr
+
+	def __init__(self, onset = 1, outfilename = "gasvelocities.out"):
 		if outfilename is not None:
 			self.outfile = open(outfilename, "w")
 			self.outfile.write("# Time [Gyr]    ")
@@ -36,6 +40,7 @@ class base:
 			self.outfile.write("ISM radial velocity [kpc/Gyr]\n")
 		else:
 			self.outfile = None
+		self.onset = onset
 
 
 	def __enter__(self):
@@ -55,10 +60,72 @@ class base:
 		else: pass
 
 
+	def setup(self, mw_model, dr = 0.1, dt = 0.01, **kwargs):
+		vgas_alltimes = []
+		n_zones = int(MAX_RADIUS / dr)
+		times = [dt * i for i in range(int(END_TIME / dt) + 10)]
+		for i in range(len(times)):
+			if i > self.onset / dt:
+				radii, vgas = self.__call__(i * dt, **kwargs)
+				vgas_alltimes.append(vgas)
+			else:
+				radii = [dr * i for i in range(n_zones)]
+				vgas = len(radii) * [0.]
+				vgas_alltimes.append(vgas)
+		matrix_elements_inward = []
+		matrix_elements_outward = []
+		for i in range(n_zones):
+			areafracs_inward = []
+			areafracs_outward = []
+			vgas = [row[i] for row in vgas_alltimes]
+			for j in range(len(times)):
+				if j > self.onset / dt:
+					radius = i * dr
+					if vgas[j] > 0: # outward flow
+						numerator = 2 * (radius + dr) * vgas[j] * self.NORMTIME
+						numerator -= vgas[j]**2 * self.NORMTIME**2
+					else: # inward flow
+						numerator = vgas[j]**2 * 0.01**2
+						numerator -= 2 * radius * vgas[j] * self.NORMTIME
+					denominator = 2 * radius * dr + dr**2
+					areafrac = numerator / denominator
+					if areafrac * dt / self.NORMTIME > 1:
+						warnings.warn("""\
+Area fraction larger than 1. Consider comparing results with different \
+timestep sizes to assess the impact of numerical artifacts.""")
+						areafrac = self.NORMTIME / dt - 1.e-9
+					elif areafrac < 0:
+						areafrac = 1.e-9
+					else: pass
+					if vgas[j] > 0:
+						areafracs_outward.append(areafrac)
+						areafracs_inward.append(1.e-10)
+					else:
+						areafracs_outward.append(1.e-10)
+						areafracs_inward.append(areafrac)
+				else:
+					areafracs_outward.append(1.e-10)
+					areafracs_inward.append(1.e-10)
+			matrix_elements_outward.append(
+				driver(times, areafracs_outward, dt = dt))
+			matrix_elements_inward.append(
+				driver(times, areafracs_inward, dt = dt))
+		for i in range(n_zones):
+			for j in range(n_zones):
+				if i - 1 == j: # inward flows
+					mw_model.migration.gas[i][j] = matrix_elements_inward[i]
+				elif i + 1 == j: # outward flows
+					mw_model.migration.gas[i][j] = matrix_elements_outward[i]
+				else:
+					mw_model.migration.gas[i][j] = 0
+
+
+
+
 class constant(base):
 
-	def __init__(self, speed, outfilename = "gasvelocities.out"):
-		super().__init__(outfilename = outfilename)
+	def __init__(self, speed, onset = 1, outfilename = "gasvelocities.out"):
+		super().__init__(onset = onset, outfilename = outfilename)
 		self.speed = speed
 
 
@@ -69,10 +136,86 @@ class constant(base):
 		return [radii, vgas]
 
 
+
+
+class angular_momentum_dilution(base):
+
+
+	def __init__(self, mw_model, beta_phi_in = 0.7, beta_phi_out = 0, onset = 1,
+		outfilename = "gasvelocities.out"):
+		super().__init__(onset = onset, outfilename = outfilename)
+		self.beta_phi_in = beta_phi_in
+		self.beta_phi_out = beta_phi_out
+
+
+	def __call__(self, time, recycling = 0.4, dr = 0.1, dt = 0.01):
+		radii = [dr * i for i in range(int(MAX_RADIUS / dr))]
+		vgas = len(radii) * [0.]
+		for i in range(1, len(radii)):
+			if radii[i] <= MAX_SF_RADIUS:
+				vgas[i] = vgas[i - 1] + dr * self.dvdr(time, radii[i - 1],
+					vgas[i - 1], recycling = recycling, dr = dr, dt = dt)
+			else:
+				vgas[i] = 0
+		self.write(time, radii, vgas)
+		return [radii, vgas]
+
+
+	def dvdr(self, time, radius, vgas, recycling = 0.4, dr = 0.1, dt = 0.01):
+		zone = get_bin_number(self.mw_model.annuli, radius)
+		if zone < 0: raise ValueError(
+			"Radius outside of allowed range: %g" % (radius))
+		dvdr = 0
+
+		sfr = self.mw_model.zones[zone].func(time)
+		tau_star = self.mw_model.zones[zone].tau_star(time, sfr)
+		Mg = sfr * tau_star * 1.e9 # yr^-1 -> Gyr^-1
+		sfr_next = self.mw_model.zones[zone].func(time + dt)
+		Mg_next = sfr_next * self.mw_model.zones[zone].tau_star(
+			time + dt, sfr_next) * 1.e9
+		dlnMg_dt = (Mg_next - Mg) / (Mg * dt)
+		dvdr -= dlnMg_dt
+		dvdr -= (1 - recycling) / tau_star
+
+		if callable(self.mw_model.zones[zone].eta):
+			eta = self.mw_model.zones[zone].eta(time)
+		else:
+			eta = self.mw_model.zones[zone].eta
+		if callable(self.beta_phi_in):
+			beta_phi_in = self.beta_phi_in(radius, time)
+		else:
+			beta_phi_in = self.beta_phi_in
+		if callable(self.beta_phi_out):
+			beta_phi_out = self.beta_phi_out(radius, time)
+		else:
+			beta_phi_out = self.beta_phi_out
+
+		dvdr -= eta / tau_star * (1 - beta_phi_out) / (1 - beta_phi_in)
+
+		if radius + dr < MAX_SF_RADIUS:
+			Sigmag = Mg / (np.pi * (radius + dr)**2 - radius**2)
+			sfr_next = self.mw_model.zones[zone + 1].func(time)
+			Mg_next = sfr_next * self.mw_model.zones[zone + 1].tau_star(
+				time, sfr_next) * 1.e9 # yr^-1 -> Gyr^-1
+			Sigmag_next = Mg_next / (np.pi * (radius + 2 * dr)**2 - 
+				(radius + dr)**2)
+			dlnSigmag_dr = (Sigmag_next - Sigmag) / (Sigmag * dr)
+		else:
+			dlnSigmag_dr = -1 / dr # Sigmag_next -> 0
+
+		dvdr -= vgas * (dlnSigmag_dr +
+			1 / radius * (beta_phi_in - 2) / (beta_phi_in - 1))
+
+		return dvdr
+
+
+
+
+
 class river(base):
 
-	def __init__(self, mw_model, outfilename = "gasvelocities.out"):
-		super().__init__(outfilename = outfilename)
+	def __init__(self, mw_model, onset = 1, outfilename = "gasvelocities.out"):
+		super().__init__(onset = onset, outfilename = outfilename)
 		if isinstance(mw_model, vice.milkyway):
 			self.mw_model = mw_model
 		else:
@@ -123,14 +266,14 @@ River model currently supports star formation mode.""")
 		x = (dMg + 1.e9 * sfr * dt * (1 + eta - recycling)) / Mg_dr
 		vgas = 1 - np.sqrt(1 + 3 * x)
 		vgas *= dr / dt
-		if abs(time - 0.11) < 1.e-3:
-			print("============================================")
-			print(dMg + 1.e9 * sfr * dt * (1 + eta - recycling))
-			print(Mg_dr)
-			print(vgas)
-			print(Mg_dr * (vgas**2 * dt**2 - 2 * dr * vgas * dt) / (3 * dr**2))
-			print("============================================")
-		else: pass
+		# if abs(time - 0.11) < 1.e-3:
+		# 	print("============================================")
+		# 	print(dMg + 1.e9 * sfr * dt * (1 + eta - recycling))
+		# 	print(Mg_dr)
+		# 	print(vgas)
+		# 	print(Mg_dr * (vgas**2 * dt**2 - 2 * dr * vgas * dt) / (3 * dr**2))
+		# 	print("============================================")
+		# else: pass
 		return vgas # kpc / Gyr
 
 
@@ -156,7 +299,7 @@ River model currently supports star formation mode.""")
 			dlnmgas_dr = (mgas_next - mgas) / (mgas * dr)
 		else:
 			# this is the last zone and the calculation is stopping here anyway
-			dlnmgas_dr = -1 / dr # (mgas_next -> 0)
+			dlnmgas_dr = -1 / dr # mgas_next -> 0
 
 		if callable(self.mw_model.zones[0].eta):
 			eta = self.mw_model.zones[0].eta(time)
