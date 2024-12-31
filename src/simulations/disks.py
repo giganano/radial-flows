@@ -23,7 +23,7 @@ from . import migration
 from . import models
 from . import inputs
 from . import sfe
-from .models.utils import get_bin_number, interpolate
+from .models.utils import get_bin_number, interpolate, modified_exponential
 from .models.gradient import gradient
 # import warnings
 import math as m
@@ -119,6 +119,17 @@ class diskmodel(vice.milkyway):
 			engine.setup(self, dr = zone_width, dt = self.dt, **callkwargs)
 		else:
 			pass
+
+		if not m.isinf(inputs.CGM_FINAL_METALLICITY):
+			for i in range(self.n_zones):
+				self.zones[i].Zin = {}
+				for elem in self.zones[i].elements:
+					kwargs = {
+						"norm": vice.solar_z[elem] * 10**inputs.CGM_FINAL_METALLICITY,
+						"rise": inputs.CGM_METALLICITY_GROWTH_TIMESCALE,
+						"timescale": float("inf")
+					}
+					self.zones[i].Zin[elem] = modified_exponential(**kwargs)
 
 
 		# setup radial gas flow

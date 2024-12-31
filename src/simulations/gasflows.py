@@ -129,9 +129,14 @@ class constant(base):
 		self.speed = speed
 
 
-	def __call__(self, time, dr = 0.1, dt = 0.01):
+	def __call__(self, time, dr = 0.1, dt = 0.01, **kwargs):
 		radii = [dr * i for i in range(int(MAX_RADIUS / dr))]
-		vgas = len(radii) * [self.speed]
+		if callable(self.speed):
+			# it's a constant in radius, but not necessarily in time
+			speed = self.speed(time, **kwargs)
+		else:
+			speed = self.speed
+		vgas = len(radii) * [speed]
 		self.write(time, radii, vgas)
 		return [radii, vgas]
 
@@ -144,6 +149,7 @@ class angular_momentum_dilution(base):
 	def __init__(self, mw_model, beta_phi_in = 0.7, beta_phi_out = 0, onset = 1,
 		outfilename = "gasvelocities.out"):
 		super().__init__(onset = onset, outfilename = outfilename)
+		self.mw_model = mw_model
 		self.beta_phi_in = beta_phi_in
 		self.beta_phi_out = beta_phi_out
 
@@ -203,8 +209,15 @@ class angular_momentum_dilution(base):
 		else:
 			dlnSigmag_dr = -1 / dr # Sigmag_next -> 0
 
-		dvdr -= vgas * (dlnSigmag_dr +
-			1 / radius * (beta_phi_in - 2) / (beta_phi_in - 1))
+		if radius:
+			dvdr -= vgas * (dlnSigmag_dr +
+				1 / radius * (beta_phi_in - 2) / (beta_phi_in - 1))
+		else:
+			# handle the 1 / r discontinuity by substituting in
+			# 1 / r = d\ln M / dr - d\ln\Sigma / dr -- algebraic solution below
+			dlnMg_dr = (Mg_next - Mg) / (Mg * dr)
+			dvdr -= vgas / (beta_phi_in - 1) * (
+				dlnSigmag_dr + (beta_phi_in - 2) * dlnMg_dr)
 
 		return dvdr
 
