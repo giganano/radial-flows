@@ -6,7 +6,7 @@ import vice
 
 
 # --------------- RADIAL GAS FLOWS --------------- #
-RADIAL_GAS_FLOWS = "constant" # None turns them off
+RADIAL_GAS_FLOWS = None # None turns them off
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 
 # used when RADIAL_GAS_FLOWS = "constant"
@@ -23,7 +23,7 @@ RADIAL_GAS_FLOW_BETA_PHI_OUT = 0
 
 
 # --------------- ACCRETION METALLICITY TIME-DEP --------------- #
-CGM_FINAL_METALLICITY = -0.7 # -inf for zero metallicity accretion
+CGM_FINAL_METALLICITY = -float("inf") # -inf for zero metallicity accretion
 CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 

@@ -130,6 +130,7 @@ class diskmodel(vice.milkyway):
 						"timescale": float("inf")
 					}
 					self.zones[i].Zin[elem] = modified_exponential(**kwargs)
+		else: pass
 
 
 		# setup radial gas flow
