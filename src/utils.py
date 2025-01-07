@@ -1,4 +1,6 @@
 
+import numpy as np
+
 def get_velocity_profile(output, lookback):
 	raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
 	time = output.zones["zone0"].history["time"][-1] - lookback
