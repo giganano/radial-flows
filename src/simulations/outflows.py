@@ -63,10 +63,13 @@ class empirical_calib(exponential):
 		
 		# Game the exponential object, whose namespace implies evolution with
 		# time, into something that evolves with radius.
-		self.norm = self.MZR_NORM
-		self.norm *= (mstar / self.MZR_NORM_MSTAR)**(-self.MZR_PLAW_INDEX)
-		self.norm *= (1 + self.gamma_star + self.gamma_sfr)**2
-		return super().__call__(self.radius)
+		if mstar:
+			self.norm = self.MZR_NORM
+			self.norm *= (mstar / self.MZR_NORM_MSTAR)**(-self.MZR_PLAW_INDEX)
+			self.norm *= (1 + self.gamma_star + self.gamma_sfr)**2
+			return min(super().__call__(self.radius), self.ETA_MAX)
+		else:
+			return self.ETA_MAX
 
 
 
