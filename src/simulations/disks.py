@@ -19,6 +19,7 @@ from vice.toolkit import hydrodisk
 vice.yields.sneia.settings['fe'] *= 10**0.1
 from .._globals import END_TIME, MAX_SF_RADIUS, ZONE_WIDTH
 from . import gasflows
+from . import outflows
 from . import migration
 from . import models
 from . import inputs
@@ -88,8 +89,25 @@ class diskmodel(vice.milkyway):
 		self.evolution = star_formation_history(spec = spec,
 			zone_width = zone_width)
 		self.mode = "sfr"
+
 		for i in range(self.n_zones):
-			self.zones[i].eta = 0
+			if inputs.OUTFLOWS == "empirical_calib":
+				kwargs = {
+					"zone_width": zone_width,
+					"timestep": self.zones[i].dt
+				}
+				if i: kwargs["evol"] = self.zones[0].eta.evol
+				self.zones[i].eta = outflows.empirical_calib(self,
+					i * zone_width + 1.e-6, **kwargs)
+				# self.zones[i].eta = outflows.empirical_calib(self,
+				# 	i * zone_width + 1.e-6, zone_width = zone_width,
+				# 	timestep = self.zones[i].dt)
+			elif inputs.OUTFLOWS is None:
+				self.zones[i].eta = 0
+			else:
+				raise ValueError("Bad outflow setting in input file.")
+
+		for i in range(self.n_zones):
 			area = m.pi * ZONE_WIDTH**2 * ((i + 1)**2 - i**2)
 			self.zones[i].tau_star = sfe.sfe(area, mode = "sfr")
 

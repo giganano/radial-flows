@@ -3,6 +3,10 @@
 import math as m
 import vice
 
+# --------------- OUTFLOWS --------------- #
+OUTFLOWS = "empirical_calib" # None to turn them off
+# OUTFLOWS = None
+
 
 
 # --------------- RADIAL GAS FLOWS --------------- #
@@ -10,21 +14,21 @@ RADIAL_GAS_FLOWS = "river" # None turns them off
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 
 # used when RADIAL_GAS_FLOWS = "constant"
-RADIAL_GAS_FLOW_SPEED = -1.5 # km/s
+RADIAL_GAS_FLOW_SPEED = -1 # km/s
 # def RADIAL_GAS_FLOW_SPEED(time):
 # 	return -10 * np.exp(-time / 3)
 
 # used when RADIAL_GAS_FLOWS = "angular_momentum_dilution"
 # RADIAL_GAS_FLOW_BETA_PHI_IN = 0.3
-RADIAL_GAS_FLOW_BETA_PHI_IN = 0.5
-# RADIAL_GAS_FLOW_BETA_PHI_IN = 0.7
+# RADIAL_GAS_FLOW_BETA_PHI_IN = 0.5
+RADIAL_GAS_FLOW_BETA_PHI_IN = 0.7
 # def RADIAL_GAS_FLOW_BETA_PHI_IN(r, t):
 	# return 0.3 + 0.4 * (1 - m.exp(-t / 2))
 RADIAL_GAS_FLOW_BETA_PHI_OUT = 0
 
 
 # --------------- ACCRETION METALLICITY TIME-DEP --------------- #
-CGM_FINAL_METALLICITY = -0.7 # -inf for zero metallicity accretion
+CGM_FINAL_METALLICITY = -float("inf") # -inf for zero metallicity accretion
 CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
