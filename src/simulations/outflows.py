@@ -11,6 +11,7 @@ models of the mass-metallicity relation.
 """
 
 from .._globals import END_TIME
+from .models.utils import exponential
 import math as m
 
 class evoldata:
@@ -29,69 +30,95 @@ class evoldata:
 					1 - recycling) * timestep * 1.e9)
 
 
-class empirical_calib:
+class empirical_calib(exponential):
 
 	MZR_NORM = 3.6 # eta at 10^10 Msun
 	MZR_PLAW_INDEX = 1 / 3 # eta ~ Mstar^(-1/3)
 	MZR_NORM_MSTAR = 1.0e10 # Msun
 	ETA_MAX = 100 # occurs well in the dwarf regime for this prescription
 
-	def __init__(self, mw_model, radius, zone_width = 0.1, timestep = 0.01,
-		recycling = 0.4, evol = None):
+	# def __init__(self, mw_model, radius, zone_width = 0.1, timestep = 0.01,
+		# recycling = 0.4):
+	def __init__(self, mw_model, radius, rstar = 2.5, gamma_star = 1.5,
+		gamma_sfr = 0.2, timestep = 0.1, recycling = 0.4, evol = None):
+		super().__init__(norm = 1, timescale = 1)
 		self.mw_model = mw_model
 		self.radius = radius
-		self.zone_width = zone_width
+		self.rstar = rstar
+		self.gamma_star = gamma_star
+		self.gamma_sfr = gamma_sfr
 		self.timestep = timestep
-		self.recycling = recycling
+		self.timescale = self.rstar / (self.gamma_star + self.gamma_sfr)
 		if evol is None:
 			self.evol = evoldata(mw_model, timestep = timestep,
 				recycling = recycling)
 		else:
 			self.evol = evol
 
-
 	def __call__(self, time):
-		# grab stellar mass and sfrs in each zone at the current time.
 		if time > END_TIME: return self.__call__(END_TIME)
 		idx = int(time / self.timestep)
-		mstars = [self.evol.mstars[_][idx] for _ in range(self.mw_model.n_zones)]
-		sfrs = [self.evol.sfrs[_][idx] for _ in range(self.mw_model.n_zones)]
+		mstar = sum([self.evol.mstars[_][idx] for _ in range(
+			self.mw_model.n_zones)])
+		
+		# Game the exponential object, whose namespace implies evolution with
+		# time, into something that evolves with radius.
+		self.norm = self.MZR_NORM
+		self.norm *= (mstar / self.MZR_NORM_MSTAR)**(-self.MZR_PLAW_INDEX)
+		self.norm *= (1 + self.gamma_star + self.gamma_sfr)**2
+		return super().__call__(self.radius)
 
-		term1 = 0
-		for i in range(self.mw_model.n_zones):
-			area = m.pi * (((i + 1) * self.zone_width)**2 -
-				(i * self.zone_width)**2)
-			x = (mstars[i] / area)**1.5
-			x *= (sfrs[i] / area)**1.2
-			x *= area
-			term1 += x
-		if term1:
-			term1 = sum(sfrs) / term1
-		else:
-			return self.ETA_MAX
 
-		# term2 = 0
-		# for i in range(self.mw_model.n_zones):
-		# 	term2 += mstars[i]
-		# term2 /= self.MZR_NORM_MSTAR
-		# term2 = term2**(-self.MZR_PLAW_INDEX)
-		term2 = (sum(mstars) / self.MZR_NORM_MSTAR)**(-self.MZR_PLAW_INDEX)
 
-		eta0 = self.MZR_NORM * term1 * term2
-		zone = int(self.radius / self.zone_width)
-		area = m.pi * ((self.radius + self.zone_width)**2 - self.radius**2)
-		sigma_sfr = sfrs[zone] / area
-		sigma_star = mstars[zone] / area
-		eta = eta0 * sigma_star**1.5 * sigma_sfr**0.2
-		# if time == END_TIME:
-		# 	print(self.radius)
-		# 	print("%.3e" % (sum(mstars)))
-		# 	print(term1)
-		# 	print(term2)
-		# 	print(eta0)
-		# 	print(eta)
-		# 	print("%.3e" % (sigma_sfr))
-		# 	print("%.3e" % (sigma_star))
-		# 	print("===================================")
-		return min(eta, self.ETA_MAX)
+
+# class empirical_calib:
+
+# 	MZR_NORM = 3.6 # eta at 10^10 Msun
+# 	MZR_PLAW_INDEX = 1 / 3 # eta ~ Mstar^(-1/3)
+# 	MZR_NORM_MSTAR = 1.0e10 # Msun
+# 	ETA_MAX = 100 # occurs well in the dwarf regime for this prescription
+
+# 	def __init__(self, mw_model, radius, zone_width = 0.1, timestep = 0.01,
+# 		recycling = 0.4, evol = None):
+# 		self.mw_model = mw_model
+# 		self.radius = radius
+# 		self.zone_width = zone_width
+# 		self.timestep = timestep
+# 		self.recycling = recycling
+# 		if evol is None:
+# 			self.evol = evoldata(mw_model, timestep = timestep,
+# 				recycling = recycling)
+# 		else:
+# 			self.evol = evol
+
+
+# 	def __call__(self, time):
+# 		# grab stellar mass and sfrs in each zone at the current time.
+# 		if time > END_TIME: return self.__call__(END_TIME)
+# 		idx = int(time / self.timestep)
+# 		mstars = [self.evol.mstars[_][idx] for _ in range(self.mw_model.n_zones)]
+# 		sfrs = [self.evol.sfrs[_][idx] for _ in range(self.mw_model.n_zones)]
+
+# 		term1 = 0
+# 		for i in range(self.mw_model.n_zones):
+# 			area = m.pi * (((i + 1) * self.zone_width)**2 -
+# 				(i * self.zone_width)**2)
+# 			x = (mstars[i] / area)**1.5
+# 			x *= (sfrs[i] / area)**1.2
+# 			x *= area
+# 			term1 += x
+# 		if term1:
+# 			term1 = sum(sfrs) / term1
+# 		else:
+# 			return self.ETA_MAX
+
+# 		term2 = (sum(mstars) / self.MZR_NORM_MSTAR)**(-self.MZR_PLAW_INDEX)
+
+# 		eta0 = self.MZR_NORM * term1 * term2
+# 		zone = int(self.radius / self.zone_width)
+# 		area = m.pi * ((self.radius + self.zone_width)**2 - self.radius**2)
+# 		sigma_sfr = sfrs[zone] / area
+# 		sigma_star = mstars[zone] / area
+# 		eta = eta0 * sigma_star**1.5 * sigma_sfr**0.2
+# 		return min(eta, self.ETA_MAX)
 

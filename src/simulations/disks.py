@@ -93,15 +93,12 @@ class diskmodel(vice.milkyway):
 		for i in range(self.n_zones):
 			if inputs.OUTFLOWS == "empirical_calib":
 				kwargs = {
-					"zone_width": zone_width,
+					# "zone_width": zone_width,
 					"timestep": self.zones[i].dt
 				}
 				if i: kwargs["evol"] = self.zones[0].eta.evol
 				self.zones[i].eta = outflows.empirical_calib(self,
 					i * zone_width + 1.e-6, **kwargs)
-				# self.zones[i].eta = outflows.empirical_calib(self,
-				# 	i * zone_width + 1.e-6, zone_width = zone_width,
-				# 	timestep = self.zones[i].dt)
 			elif inputs.OUTFLOWS is None:
 				self.zones[i].eta = 0
 			else:
