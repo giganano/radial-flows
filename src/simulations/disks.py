@@ -82,7 +82,11 @@ class diskmodel(vice.milkyway):
 		# self.migration.stars = migration.diskmigration(self.annuli,
 		# 	N = Nstars, mode = migration_mode,
 		# 	filename = "%s_analogdata.out" % (name))
-		self.migration.stars = migration.gaussian_migration(self.annuli,
+		# self.migration.stars = migration.gaussian_migration(self.annuli,
+		# 	zone_width = zone_width,
+		# 	filename = "%s_analogdata.out" % (self.name),
+		# 	post_process = self.simple)
+		self.migration.stars = migration.nomigration(self.annuli,
 			zone_width = zone_width,
 			filename = "%s_analogdata.out" % (self.name),
 			post_process = self.simple)
@@ -91,13 +95,17 @@ class diskmodel(vice.milkyway):
 		self.mode = "sfr"
 
 		for i in range(self.n_zones):
-			if inputs.OUTFLOWS == "empirical_calib":
+			if inputs.OUTFLOWS in ["empirical_calib", "J25"]:
+				cls = {
+					"empirical_calib": outflows.empirical_calib,
+					"J25": outflows.J25
+				}[inputs.OUTFLOWS]
 				kwargs = {
 					# "zone_width": zone_width,
 					"timestep": self.zones[i].dt
 				}
 				if i: kwargs["evol"] = self.zones[0].eta.evol
-				self.zones[i].eta = outflows.empirical_calib(self,
+				self.zones[i].eta = cls(self,
 					i * zone_width + 1.e-6, **kwargs)
 			elif inputs.OUTFLOWS is None:
 				self.zones[i].eta = 0
@@ -117,6 +125,9 @@ class diskmodel(vice.milkyway):
 			callkwargs = {}
 			if inputs.RADIAL_GAS_FLOWS == "constant":
 				engine = gasflows.constant(inputs.RADIAL_GAS_FLOW_SPEED,
+					**kwargs)
+			elif inputs.RADIAL_GAS_FLOWS == "linear":
+				engine = gasflows.linear(dvdr = inputs.RADIAL_GAS_FLOW_DVDR,
 					**kwargs)
 			elif inputs.RADIAL_GAS_FLOWS == "angular_momentum_dilution":
 				engine = gasflows.angular_momentum_dilution(self,

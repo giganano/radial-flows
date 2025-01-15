@@ -39,16 +39,20 @@ class empirical_calib(exponential):
 
 	# def __init__(self, mw_model, radius, zone_width = 0.1, timestep = 0.01,
 		# recycling = 0.4):
-	def __init__(self, mw_model, radius, rstar = 2.5, gamma_star = 1.5,
-		gamma_sfr = 0.2, timestep = 0.1, recycling = 0.4, evol = None):
+	# def __init__(self, mw_model, radius, rstar = 2.5, gamma_star = 1.5,
+	# 	gamma_sfr = 0.2, timestep = 0.1, recycling = 0.4, evol = None):
+	def __init__(self, mw_model, radius, reta = 5, rstar = 2.5,
+		timestep = 0.1, recycling = 0.4, evol = None):
 		super().__init__(norm = 1, timescale = 1)
 		self.mw_model = mw_model
 		self.radius = radius
 		self.rstar = rstar
-		self.gamma_star = gamma_star
-		self.gamma_sfr = gamma_sfr
+		# self.gamma_star = gamma_star
+		# self.gamma_sfr = gamma_sfr
 		self.timestep = timestep
-		self.timescale = self.rstar / (self.gamma_star + self.gamma_sfr)
+		self.reta = reta
+		# self.timescale = self.rstar / (self.gamma_star + self.gamma_sfr)
+		self.timescale = self.reta
 		if evol is None:
 			self.evol = evoldata(mw_model, timestep = timestep,
 				recycling = recycling)
@@ -66,10 +70,17 @@ class empirical_calib(exponential):
 		if mstar:
 			self.norm = self.MZR_NORM
 			self.norm *= (mstar / self.MZR_NORM_MSTAR)**(-self.MZR_PLAW_INDEX)
-			self.norm *= (1 + self.gamma_star + self.gamma_sfr)**2
+			self.norm *= (self.reta + self.rstar)**2 / self.reta**2
+			# self.norm *= (1 + self.gamma_star + self.gamma_sfr)**2
 			return min(super().__call__(self.radius), self.ETA_MAX)
 		else:
 			return self.ETA_MAX
+
+
+class J25(empirical_calib):
+
+	def __init__(self, *args, reta = -7, **kwargs):
+		super().__init__(*args, reta = reta, **kwargs)
 
 
 

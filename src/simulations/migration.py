@@ -359,3 +359,9 @@ class gaussian_migration:
 			raise ValueError("The scale height must be positive.")
 		return -scale * m.log(1 / cdf - 1)
 
+
+class nomigration(gaussian_migration):
+
+	def __call__(self, zone, tform, time):
+		return zone
+

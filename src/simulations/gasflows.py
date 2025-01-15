@@ -142,6 +142,22 @@ class constant(base):
 
 
 
+class linear(base):
+
+	def __init__(self, dvdr = -0.1, onset = 1,
+		outfilename = "gasvelocities.out"):
+		super().__init__(onset = onset, outfilename = outfilename)
+		self.dvdr = dvdr
+
+
+	def __call__(self, time, dr = 0.1, dt = 0.01):
+		radii = [dr * i for i in range(int(MAX_RADIUS / dr))]
+		vgas = [self.dvdr * r for r in radii]
+		self.write(time, radii, vgas)
+		return [radii, vgas]
+
+
+
 
 class angular_momentum_dilution(base):
 
@@ -226,6 +242,8 @@ class angular_momentum_dilution(base):
 
 
 class river(base):
+
+	# EXTRA_RESOLUTION = 10
 
 	def __init__(self, mw_model, onset = 1, outfilename = "gasvelocities.out"):
 		super().__init__(onset = onset, outfilename = outfilename)

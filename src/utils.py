@@ -1,5 +1,6 @@
 
 import numpy as np
+import vice
 
 def get_velocity_profile(output, lookback):
 	raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
@@ -15,6 +16,35 @@ def get_velocity_profile(output, lookback):
 			vgas.append(raw[i][2])
 		else: pass
 	return [radii, vgas]
+
+	# raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
+	# raw = vice.dataframe({
+	# 	"time": 	raw[:, 0],
+	# 	"radius": 	raw[:, 1],
+	# 	"vgas": 	raw[:, 2]
+	# 	})
+	# diff = [abs(_ - lookback) for _ in output.zones["zone0"].history["lookback"]]
+	# idx = diff.index(min(diff))
+	# time = output.zones["zone0"].history["time"][idx]
+	# raw = raw.filter("time", "==", time)
+	# return [raw["radius"], raw["vgas"]]
+	# raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
+	# diff = [abs(_ - lookback) for _ in output.zones["zone0"].history["lookback"]]
+	# idx = diff.index(min(diff))
+	# time = output.zones["zone0"].history["time"][idx]
+	# radii = []
+	# vgas = []
+	# if idx < len(output.zones["zone0"].history["time"]) - 1:
+	# 	dt = output.zones["zone0"].history["time"][idx + 1] - time
+	# else:
+	# 	dt = time - output.zones["zone0"].history["time"][idx - 1]
+
+	# indices = np.where(raw[:,0] == time)
+	# if len(indices):
+	# 	radii = [raw[idx][1] for idx in indices]
+	# 	vgas = [raw[idx][2] for idx in indices]
+	# else: pass
+	# return [radii, vgas]
 
 def mu(output, lookback, zone_width = 0.1):
 	radii, vgas = get_velocity_profile(output, lookback)
@@ -40,3 +70,14 @@ def mu(output, lookback, zone_width = 0.1):
 				zone.history["z(o)"][idx] * zone_width)
 			mu_oxygen.append(mu)
 	return [radii, mu_gas, mu_oxygen]
+
+def boxcarsmoothtrend(xvals, yvals, window = 10):
+	assert len(xvals) == len(yvals), "Array-length mismatch: (%d, %d)" % (
+		len(xvals), len(yvals))
+	smoothed = len(xvals) * [0.]
+	for i in range(len(xvals)):
+		start = max(0, i - window)
+		stop = min(i + window, len(xvals) - 1)
+		smoothed[i] = np.mean(yvals[start:stop])
+	return smoothed
+

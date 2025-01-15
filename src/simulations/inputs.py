@@ -3,9 +3,28 @@
 import math as m
 import vice
 
+
+# --------------- YIELDS --------------- #
+YIELDSOLAR = 1
+FE_CC_FRAC = 0.35
+METDEPYIELDS = False
+
+
+
+
+
 # --------------- OUTFLOWS --------------- #
-OUTFLOWS = "empirical_calib" # None to turn them off
-# OUTFLOWS = None
+# OUTFLOWS = "J25" # None to turn them off
+OUTFLOWS = None
+
+
+
+
+# --------------- ACCRETION METALLICITY TIME-DEP --------------- #
+CGM_FINAL_METALLICITY = -float("inf") # -inf for zero metallicity accretion
+CGM_METALLICITY_GROWTH_TIMESCALE = 3
+
+
 
 
 
@@ -14,9 +33,12 @@ RADIAL_GAS_FLOWS = "river" # None turns them off
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 
 # used when RADIAL_GAS_FLOWS = "constant"
-RADIAL_GAS_FLOW_SPEED = -1 # km/s
+RADIAL_GAS_FLOW_SPEED = -0.5 # km/s
 # def RADIAL_GAS_FLOW_SPEED(time):
 # 	return -10 * np.exp(-time / 3)
+
+# used when RADIAL_GAS_FLOWS = "linear"
+RADIAL_GAS_FLOW_DVDR = -0.08
 
 # used when RADIAL_GAS_FLOWS = "angular_momentum_dilution"
 # RADIAL_GAS_FLOW_BETA_PHI_IN = 0.3
@@ -27,17 +49,40 @@ RADIAL_GAS_FLOW_BETA_PHI_IN = 0.7
 RADIAL_GAS_FLOW_BETA_PHI_OUT = 0
 
 
-# --------------- ACCRETION METALLICITY TIME-DEP --------------- #
-CGM_FINAL_METALLICITY = -float("inf") # -inf for zero metallicity accretion
-CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
-# --------------- YIELDS --------------- #
-YIELDSOLAR = 1
-FE_CC_FRAC = 0.35
+
+
+
 
 vice.yields.ccsne.settings["o"] = YIELDSOLAR * vice.solar_z["o"]
 vice.yields.sneia.settings["o"] = 0
 vice.yields.ccsne.settings["fe"] = FE_CC_FRAC * YIELDSOLAR * vice.solar_z["fe"]
 vice.yields.sneia.settings["fe"] = (1 - FE_CC_FRAC) * YIELDSOLAR * vice.solar_z["fe"]
+
+
+class metdepyield:
+
+	def __init__(self, baseline, maxincrease = 3, plawindex = -0.5,
+		zsun = 0.014):
+		self.baseline = baseline
+		self.maxincrease = maxincrease
+		self.plawindex = plawindex
+		self.zsun = zsun
+
+	def __call__(self, z):
+		if z:
+			prefactor = min((z / self.zsun)**self.plawindex, self.maxincrease)
+		else:
+			prefactor = self.maxincrease
+		return self.baseline * prefactor
+
+
+if METDEPYIELDS:
+	for elem in ["o", "fe"]:
+		vice.yields.ccsne.settings[elem] = metdepyield(
+			vice.yields.ccsne.settings[elem])
+		vice.yields.sneia.settings[elem] = metdepyield(
+			vice.yields.sneia.settings[elem])
+else: pass
 
