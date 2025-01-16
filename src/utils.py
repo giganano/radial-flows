@@ -59,7 +59,11 @@ def mu(output, lookback, zone_width = 0.1):
 			mu_gas.append(float("nan"))
 			mu_oxygen.append(float("nan"))
 		else:
-			tau_star = zone.history["mgas"][idx] / zone.history["sfr"][idx] * 1.e-9
+			if zone.history["sfr"][idx]:
+				tau_star = zone.history["mgas"][idx] / zone.history["sfr"][idx]
+				tau_star *= 1.e-9
+			else:
+				tau_star = float("inf")
 			mu = (neighbor.history["mgas"][idx] - zone.history["mgas"][idx]) / (
 				zone.history["mgas"][idx] * zone_width)
 			mu += (vgas[i + 1] - vgas[i]) / (vgas[i] * zone_width)

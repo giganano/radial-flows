@@ -120,6 +120,8 @@ class diskmodel(vice.milkyway):
 		if inputs.RADIAL_GAS_FLOWS is not None:
 			kwargs = {
 				"onset": inputs.RADIAL_GAS_FLOW_ONSET,
+				"dr": zone_width,
+				"dt": self.dt,
 				"outfilename": "%s_gasvelocities.out" % (self.name)
 			}
 			callkwargs = {}
@@ -142,7 +144,7 @@ class diskmodel(vice.milkyway):
 				raise ValueError(
 					"Unrecognized radial gas flow setting: %s" % (
 						inputs.RADIAL_GAS_FLOWS))
-			engine.setup(self, dr = zone_width, dt = self.dt, **callkwargs)
+			engine.setup(self, **callkwargs)
 		else:
 			pass
 
