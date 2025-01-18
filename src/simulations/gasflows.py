@@ -4,12 +4,14 @@ Handles radial gas flows in these models.
 
 from .._globals import MAX_SF_RADIUS, END_TIME
 from .models.utils import get_bin_number
+from .outflows import evoldata
 from vice.toolkit.interpolation import interp_scheme_1d
 from vice.milkyway.milkyway import _MAX_RADIUS_ as MAX_RADIUS # 20 kpc
 from scipy.integrate import solve_ivp
 import numpy as np
 import warnings
 import vice
+from vice import ScienceWarning
 
 
 class driver(interp_scheme_1d):
@@ -19,13 +21,23 @@ class driver(interp_scheme_1d):
 		self.dt = dt
 	
 	def __call__(self, x):
-		test = super().__call__(x) * self.dt / 0.01
+		# test = super().__call__(x) * self.dt / 0.01
+		# if test < 0:
+		# 	return 0
+		# elif test > 1:
+		# 	return 1
+		# else:
+		# 	return test
+
+		test = super().__call__(x)
 		if test < 0:
 			return 0
-		elif test > 1:
-			return 1
 		else:
-			return test
+			return min(test, 0.01 / self.dt - 1.e-9)
+		# elif test * self.dt / 0.01 > 1 - 1.e-9:
+		# 	return 0.01 / self.dt - 1.e-9
+		# else:
+		# 	return test
 
 
 
@@ -91,16 +103,16 @@ class base:
 							self.dr) * vgas[j] * self.NORMTIME
 						numerator -= vgas[j]**2 * self.NORMTIME**2
 					else: # inward flow
-						numerator = vgas[j]**2 * 0.01**2
+						numerator = vgas[j]**2 * self.NORMTIME**2
 						numerator -= 2 * radius * vgas[j] * self.NORMTIME
 					denominator = 2 * radius * self.dr + self.dr**2
 					areafrac = numerator / denominator
-					if areafrac * self.dt / self.NORMTIME > 1:
+					if areafrac * self.dt / self.NORMTIME > 1 - 1.e-9:
 						warnings.warn("""\
 Area fraction larger than 1. Consider comparing results with different \
-timestep sizes to assess the impact of numerical artifacts.""")
-						areafrac = self.NORMTIME / self.dt - 1.e-9
-					elif areafrac < 0:
+timestep sizes to assess the impact of numerical artifacts.""", ScienceWarning)
+						areafrac = 1 - 1.e-9
+					elif areafrac * self.dt / self.NORMTIME < 1.e-9:
 						areafrac = 1.e-9
 					else: pass
 					if vgas[j] > 0:
@@ -167,6 +179,31 @@ class linear(base):
 
 
 
+class potential_well_deepening(base):
+
+	def __init__(self, mw_model, gamma = 0.2, onset = 1, dr = 0.1, dt = 0.01,
+		recycling = 0.4, outfilename = "gasvelocities.out"):
+		super().__init__(onset = onset, dr = dr, dt = dt,
+			outfilename = outfilename)
+		self.gamma = gamma
+		self.mw_model = mw_model
+		self.evol = evoldata(mw_model, timestep = dt, recycling = recycling)
+
+
+	def __call__(self, time):
+		radii = [self.dr * i for i in range(self.mw_model.n_zones)]
+		timestep = int(time / self.dt)
+		sfr = 0
+		mstar = 0
+		for i in range(len(radii)):
+			sfr += self.evol.sfrs[i][timestep]
+			mstar += self.evol.mstars[i][timestep]
+		vgas = [-r * self.gamma * sfr / mstar for r in radii]
+		self.write(time, radii, vgas)
+		return [radii, vgas]
+
+
+
 
 class angular_momentum_dilution(base):
 
@@ -183,8 +220,9 @@ class angular_momentum_dilution(base):
 	def __call__(self, time, recycling = 0.4):
 		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
 		vgas = len(radii) * [0.]
+		crf = vice.cumulative_return_fraction(time)
 		def f(radius, vgas):
-			return self.dvdr(time, radius, vgas, recycling = recycling)
+			return self.dvdr(time, radius, vgas, recycling = crf)
 		profile = solve_ivp(f, [0, MAX_SF_RADIUS], [0], dense_output = True)
 		for i in range(1, len(radii)):
 			if radii[i] <= MAX_SF_RADIUS:
@@ -308,10 +346,7 @@ class angular_momentum_dilution(base):
 
 
 
-
 class river(base):
-
-	# EXTRA_RESOLUTION = 10
 
 	def __init__(self, mw_model, onset = 1, dr = 0.1, dt = 0.01,
 		outfilename = "gasvelocities.out"):
@@ -325,28 +360,14 @@ Attribute 'mw_model' must be of type vice.milkyway. Got: %s.""" % (
 				type(mw_model)))
 
 
-	# def __call__(self, time, recycling = 0.4, dr = 0.1, dt = 0.01):
-	# 	radii = [dr * i for i in range(int(MAX_RADIUS / dr))]
-	# 	vgas = len(radii) * [0.]
-	# 	vgas[0] = 0
-	# 	vgas[1] = self.v_at_deltaR(time, recycling = recycling, dr = dr, dt = dt)
-	# 	for i in range(2, len(radii)):
-	# 		if radii[i] <= MAX_SF_RADIUS:
-	# 			vgas[i] = vgas[i - 1] + dr * self.dvdr(time, radii[i - 1],
-	# 				vgas[i - 1], recycling = recycling, dr = dr, dt = dt)
-	# 		else:
-	# 			vgas[i] = 0
-	# 	self.write(time, radii, vgas)
-	# 	return [radii, vgas] # kpc / Gyr
-
 	def __call__(self, time, recycling = 0.4):
 		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
-		# print(radii)
 		vgas = len(radii) * [0.]
 		for i in range(1, len(radii)):
 			if radii[i] <= MAX_SF_RADIUS:
+				crf = vice.cumulative_return_fraction(time)
 				vgas[i] = self.next_vgas(vgas[i - 1], time, radii[i - 1],
-					recycling = recycling)
+					recycling = crf)
 			else:
 				vgas[i] = 0
 		self.write(time, radii, vgas)
@@ -354,7 +375,6 @@ Attribute 'mw_model' must be of type vice.milkyway. Got: %s.""" % (
 
 
 	def next_vgas(self, vgas, time, radius, recycling = 0.4):
-
 		zone = get_bin_number(self.mw_model.annuli, radius)
 		if zone < 0: raise ValueError(
 			"Radius outside of allowed range: %g" % (radius))
@@ -381,34 +401,35 @@ Attribute 'mw_model' must be of type vice.milkyway. Got: %s.""" % (
 		else:
 			eta = zone.eta
 
-		# print("========================")
 		x = vgas**2 * self.dt**2 - 2 * radius * vgas * self.dt
-		# print(x)
 		x /= 2 * radius * self.dr + self.dr**2
-		# print(x)
 		x *= mgas
-		# print("sfr = ", sfr)
-		# print("taustar = ", taustar)
-		# print("mgas = ", mgas)
-		# print(x)
 		x += mgas_next - mgas
-		# print(x)
 		x += sfr * self.dt * (1 + eta - recycling) 
-		# print(x)
 		x *= 2 * radius * self.dr + 3 * self.dr**2
-		# print(x)
 		x /= n_mgas
-		# print(x)
 		x += (radius + self.dr)**2
-		# print(x)
 
 		if x < 0: raise ValueError("x < 0: %.5e. r = %.5e. t = %.5e" % (x,
 			radius, time))
-		# if x < 0: x = 0
 
-		# n_vgas = 1 / dt * (radius - np.sqrt(x))
 		n_vgas = 1 / self.dt * (radius + self.dr - np.sqrt(x))
 		return n_vgas
+
+
+# 	def __call__(self, time, recycling = 0.4, dr = 0.1, dt = 0.01):
+# 		radii = [dr * i for i in range(int(MAX_RADIUS / dr))]
+# 		vgas = len(radii) * [0.]
+# 		vgas[0] = 0
+# 		vgas[1] = self.v_at_deltaR(time, recycling = recycling, dr = dr, dt = dt)
+# 		for i in range(2, len(radii)):
+# 			if radii[i] <= MAX_SF_RADIUS:
+# 				vgas[i] = vgas[i - 1] + dr * self.dvdr(time, radii[i - 1],
+# 					vgas[i - 1], recycling = recycling, dr = dr, dt = dt)
+# 			else:
+# 				vgas[i] = 0
+# 		self.write(time, radii, vgas)
+# 		return [radii, vgas] # kpc / Gyr
 
 
 

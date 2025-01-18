@@ -70,8 +70,9 @@ class diskmodel(vice.milkyway):
 	Attributes and functionality are inherited from ``vice.milkyway``.
 	"""
 
-	def __init__(self, zone_width = 0.1, name = "diskmodel", spec = "static",
-		verbose = True, migration_mode = "diffusion", **kwargs):
+	def __init__(self, zone_width = 0.1, timestep_size = 0.01,
+		name = "diskmodel", spec = "static", verbose = True,
+		migration_mode = "diffusion", **kwargs):
 		super().__init__(zone_width = zone_width, name = name,
 			verbose = verbose, **kwargs)
 		if self.zone_width <= 0.2 and self.dt <= 0.02 and self.n_stars >= 6:
@@ -93,6 +94,7 @@ class diskmodel(vice.milkyway):
 		self.evolution = star_formation_history(spec = spec,
 			zone_width = zone_width)
 		self.mode = "sfr"
+		self.dt = timestep_size
 
 		for i in range(self.n_zones):
 			if inputs.OUTFLOWS in ["empirical_calib", "J25"]:
@@ -115,6 +117,7 @@ class diskmodel(vice.milkyway):
 		for i in range(self.n_zones):
 			area = m.pi * ZONE_WIDTH**2 * ((i + 1)**2 - i**2)
 			self.zones[i].tau_star = sfe.sfe(area, mode = "sfr")
+			# self.zones[i].tau_star = lambda r, t: 3
 
 		# setup radial gas flow
 		if inputs.RADIAL_GAS_FLOWS is not None:
@@ -137,6 +140,9 @@ class diskmodel(vice.milkyway):
 					beta_phi_out = inputs.RADIAL_GAS_FLOW_BETA_PHI_OUT,
 					**kwargs)
 				callkwargs["recycling"] = 0.4
+			elif inputs.RADIAL_GAS_FLOWS == "potential_well_deepening":
+				engine = gasflows.potential_well_deepening(self,
+					gamma = inputs.RADIAL_GAS_FLOW_PWDGAMMA, **kwargs)
 			elif inputs.RADIAL_GAS_FLOWS == "river":
 				engine = gasflows.river(self, **kwargs)
 				callkwargs["recycling"] = 0.4
@@ -250,8 +256,8 @@ class diskmodel(vice.milkyway):
 		model : ``diskmodel``
 			The ``diskmodel`` object with the proper settings.
 		"""
-		model = cls(zone_width = config.zone_width, **kwargs)
-		model.dt = config.timestep_size
+		model = cls(zone_width = config.zone_width,
+			timestep_size = config.timestep_size, **kwargs)
 		model.n_stars = config.star_particle_density
 		model.bins = config.bins
 		model.elements = config.elements

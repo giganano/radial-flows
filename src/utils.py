@@ -2,6 +2,12 @@
 import numpy as np
 import vice
 
+
+def oh_to_12pluslog(oh, solaro = vice.solar_z["o"], mo = 15.999, Xsun = 0.73):
+	# return 12 + np.log10(mh / mo * solaro * 10**oh)
+	return 12 + np.log10(solaro / (Xsun * mo)) + oh
+
+
 def get_velocity_profile(output, lookback):
 	raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
 	time = output.zones["zone0"].history["time"][-1] - lookback
@@ -16,6 +22,22 @@ def get_velocity_profile(output, lookback):
 			vgas.append(raw[i][2])
 		else: pass
 	return [radii, vgas]
+
+
+def get_velocity_evolution(output, radius, zone_width = 0.1):
+	raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
+	zone = int(radius / zone_width)
+	radius = zone * zone_width # use inner edge for sake of lookup in file
+	time = []
+	vgas = []
+	for i in range(len(raw)):
+		if raw[i][1] == radius:
+			time.append(raw[i][0])
+			vgas.append(raw[i][1])
+		else: pass
+	lookback = [time[-1] - t for t in time]
+	return [lookback, vgas]
+
 
 	# raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
 	# raw = vice.dataframe({
@@ -74,6 +96,18 @@ def mu(output, lookback, zone_width = 0.1):
 				zone.history["z(o)"][idx] * zone_width)
 			mu_oxygen.append(mu)
 	return [radii, mu_gas, mu_oxygen]
+
+
+# def mu_evolution(output, radius, zone_width = 0.1):
+# 	zone = int(radius / zone_width)
+# 	radius = zone_width * radius # use inner edge of zone
+# 	neighbor = output.zones["zone%d" % (zone + 1)]
+# 	zone = output.zones["zone%d" % (zone)]
+# 	mu_gas = []
+# 	mu_oxygen = []
+# 	time = zone.history["time"]
+# 	for 
+
 
 def boxcarsmoothtrend(xvals, yvals, window = 10):
 	assert len(xvals) == len(yvals), "Array-length mismatch: (%d, %d)" % (
