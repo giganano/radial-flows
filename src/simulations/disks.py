@@ -97,10 +97,11 @@ class diskmodel(vice.milkyway):
 		self.dt = timestep_size
 
 		for i in range(self.n_zones):
-			if inputs.OUTFLOWS in ["empirical_calib", "J25"]:
+			if inputs.OUTFLOWS in ["empirical_calib", "J25", "rc25_constant"]:
 				cls = {
 					"empirical_calib": outflows.empirical_calib,
-					"J25": outflows.J25
+					"J25": outflows.J25,
+					"rc25_constant": outflows.rc25_constant,
 				}[inputs.OUTFLOWS]
 				kwargs = {
 					# "zone_width": zone_width,
@@ -109,6 +110,9 @@ class diskmodel(vice.milkyway):
 				if i: kwargs["evol"] = self.zones[0].eta.evol
 				self.zones[i].eta = cls(self,
 					i * zone_width + 1.e-6, **kwargs)
+			elif inputs.OUTFLOWS == "constant_t_and_r":
+				self.zones[i].eta = outflows.constant_t_and_r(
+					inputs.OUTFLOWS_CONST_ETA)
 			elif inputs.OUTFLOWS is None:
 				self.zones[i].eta = 0
 			else:

@@ -77,6 +77,26 @@ class empirical_calib(exponential):
 			return self.ETA_MAX
 
 
+class rc25_constant(empirical_calib):
+
+	MZR_NORM = 2
+	MZR_PLAW_INDEX = 0
+
+	# def __call__(self, time):
+		# eta = super().__call__(time)
+		# if time == 10: print(self.radius, eta)
+		# return eta
+
+
+class constant_t_and_r:
+
+	def __init__(self, value):
+		self.value = value
+
+	def __call__(self, time):
+		return self.value
+
+
 class J25(empirical_calib):
 
 	def __init__(self, *args, reta = -7, **kwargs):
