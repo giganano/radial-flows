@@ -30,7 +30,7 @@ CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
 # --------------- RADIAL GAS FLOWS --------------- #
-RADIAL_GAS_FLOWS = "river" # None turns them off
+RADIAL_GAS_FLOWS = "potential_well_deepening" # None turns them off
 # RADIAL_GAS_FLOWS = None
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 
@@ -51,7 +51,7 @@ RADIAL_GAS_FLOW_BETA_PHI_IN = 0.6
 RADIAL_GAS_FLOW_BETA_PHI_OUT = 0
 
 # used when RADIAL_GAS_FLOWS = "potential_well_deepening"
-RADIAL_GAS_FLOW_PWDGAMMA = 0.2
+RADIAL_GAS_FLOW_PWDGAMMA = 0.3
 
 
 

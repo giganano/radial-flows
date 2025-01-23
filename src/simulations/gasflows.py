@@ -187,6 +187,7 @@ class potential_well_deepening(base):
 			outfilename = outfilename)
 		self.gamma = gamma
 		self.mw_model = mw_model
+		self.recycling = recycling
 		self.evol = evoldata(mw_model, timestep = dt, recycling = recycling)
 
 
@@ -196,7 +197,11 @@ class potential_well_deepening(base):
 		sfr = 0
 		mstar = 0
 		for i in range(len(radii)):
-			sfr += self.evol.sfrs[i][timestep]
+			# decrement sfr by 1 - r because the potential well
+			# deepening argument is based on the time derivative of the
+			# stellar mass, which differs in important detail from the
+			# specific star formation rate.
+			sfr += (1 - self.recycling) * self.evol.sfrs[i][timestep]
 			mstar += self.evol.mstars[i][timestep]
 		vgas = [-r * self.gamma * sfr / mstar for r in radii]
 		self.write(time, radii, vgas)
