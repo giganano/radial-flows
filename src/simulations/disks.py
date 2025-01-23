@@ -83,14 +83,14 @@ class diskmodel(vice.milkyway):
 		# self.migration.stars = migration.diskmigration(self.annuli,
 		# 	N = Nstars, mode = migration_mode,
 		# 	filename = "%s_analogdata.out" % (name))
-		# self.migration.stars = migration.gaussian_migration(self.annuli,
-		# 	zone_width = zone_width,
-		# 	filename = "%s_analogdata.out" % (self.name),
-		# 	post_process = self.simple)
-		self.migration.stars = migration.nomigration(self.annuli,
+		self.migration.stars = migration.gaussian_migration(self.annuli,
 			zone_width = zone_width,
 			filename = "%s_analogdata.out" % (self.name),
 			post_process = self.simple)
+		# self.migration.stars = migration.nomigration(self.annuli,
+		# 	zone_width = zone_width,
+		# 	filename = "%s_analogdata.out" % (self.name),
+		# 	post_process = self.simple)
 		self.evolution = star_formation_history(spec = spec,
 			zone_width = zone_width)
 		self.mode = "sfr"
@@ -143,7 +143,7 @@ class diskmodel(vice.milkyway):
 					beta_phi_in = inputs.RADIAL_GAS_FLOW_BETA_PHI_IN,
 					beta_phi_out = inputs.RADIAL_GAS_FLOW_BETA_PHI_OUT,
 					**kwargs)
-				callkwargs["recycling"] = 0.4
+				# callkwargs["recycling"] = 0.4
 			elif inputs.RADIAL_GAS_FLOWS == "potential_well_deepening":
 				engine = gasflows.potential_well_deepening(self,
 					gamma = inputs.RADIAL_GAS_FLOW_PWDGAMMA, **kwargs)

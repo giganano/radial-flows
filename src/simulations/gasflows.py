@@ -217,19 +217,33 @@ class angular_momentum_dilution(base):
 		self.beta_phi_out = beta_phi_out
 
 
-	def __call__(self, time, recycling = 0.4):
+	# def __call__(self, time, recycling = 0.4):
+	# 	radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
+	# 	vgas = len(radii) * [0.]
+	# 	crf = vice.cumulative_return_fraction(time)
+	# 	def f(radius, vgas):
+	# 		return self.dvdr(time, radius, vgas, recycling = crf)
+	# 	profile = solve_ivp(f, [0, MAX_SF_RADIUS], [0], dense_output = True)
+	# 	for i in range(1, len(radii)):
+	# 		if radii[i] <= MAX_SF_RADIUS:
+	# 			# vgas[i] = vgas[i - 1] + self.dr * self.dvdr(time, radii[i - 1],
+	# 			# 	vgas[i - 1], recycling = recycling)
+	# 			vgas[i] = profile.sol(radii[i])[0]
+	# 			# print(vgas[i])
+	# 		else:
+	# 			vgas[i] = 0
+	# 	self.write(time, radii, vgas)
+	# 	return [radii, vgas]
+
+
+	def __call__(self, time):
 		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
 		vgas = len(radii) * [0.]
 		crf = vice.cumulative_return_fraction(time)
-		def f(radius, vgas):
-			return self.dvdr(time, radius, vgas, recycling = crf)
-		profile = solve_ivp(f, [0, MAX_SF_RADIUS], [0], dense_output = True)
 		for i in range(1, len(radii)):
 			if radii[i] <= MAX_SF_RADIUS:
-				# vgas[i] = vgas[i - 1] + self.dr * self.dvdr(time, radii[i - 1],
-				# 	vgas[i - 1], recycling = recycling)
-				vgas[i] = profile.sol(radii[i])[0]
-				# print(vgas[i])
+				vgas[i] = vgas[i - 1] + self.dr * self.dvdr(time, radii[i - 1],
+					vgas[i - 1], recycling = crf)
 			else:
 				vgas[i] = 0
 		self.write(time, radii, vgas)

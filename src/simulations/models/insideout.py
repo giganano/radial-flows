@@ -15,6 +15,17 @@ _TAU_RISE_ = 2.0 # Gyr -- left in b/c otherwise lateburst.py can't import
 TAUSFHMAX = 200
 TAURISEMAX = 2 * END_TIME
 
+# r_rise = 6.5
+# r_sfh = 3.26
+
+def exponential_tau_rise(radius):
+	return 2 * m.exp(radius / 6.5)
+
+
+def exponential_tau_sfh(radius):
+	return 2 * m.exp(radius / 3.25)
+
+
 
 class insideout(modified_exponential):
 
@@ -38,18 +49,25 @@ class insideout(modified_exponential):
 	``modified_exponential`` declared in ``src/simulations/models/utils.py``.
 	"""
 
-	def __init__(self, radius, dt = 0.01, dr = 0.1):
-		# super().__init__(timescale = insideout.timescale(radius),
-		# 	rise = _TAU_RISE_)
-		# self.norm *= normalize(self, gradient, radius, dt = dt, dr = dr)
-		tausfh, taurise = find_tausfh_taurise(radius)
-		if m.isnan(tausfh): tausfh = TAUSFHMAX
-		if m.isnan(taurise): taurise = TAURISEMAX
-		super().__init__(timescale = tausfh, rise = taurise)
-		self.norm *= normalize(self, gradient, radius, dt = dt, dr = dr)
+	# def __init__(self, radius, dt = 0.01, dr = 0.1):
+	# 	# super().__init__(timescale = insideout.timescale(radius),
+	# 	# 	rise = _TAU_RISE_)
+	# 	# self.norm *= normalize(self, gradient, radius, dt = dt, dr = dr)
+	# 	tausfh, taurise = find_tausfh_taurise(radius)
+	# 	if m.isnan(tausfh): tausfh = TAUSFHMAX
+	# 	if m.isnan(taurise): taurise = TAURISEMAX
+	# 	super().__init__(timescale = tausfh, rise = taurise)
+	# 	self.norm *= normalize(self, gradient, radius, dt = dt, dr = dr)
 
-	def __call__(self, time):
-		return super().__call__(time)
+	# def __call__(self, time):
+	# 	return super().__call__(time)
+
+	def __init__(self, radius, dt = 0.01, dr = 0.1):
+		super().__init__(
+			timescale = exponential_tau_sfh(radius),
+			rise = exponential_tau_rise(radius)
+		)
+		self.norm *= normalize(self, gradient, radius, dt = dt, dr = dr)
 
 	@staticmethod
 	def timescale(radius, Re = 5):

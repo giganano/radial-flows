@@ -26,4 +26,5 @@ class sfe(J21_sf_law):
 			if sigma_sfr <= 0: return 1.e-12 # avoid ZeroDivisionError
 			scaling = (sigma_sfr * molecular /
 				self._CRITICAL_SURFACE_DENSITY_)**(1 / self._KS_PLAW_INDEX_ - 1)
-			return molecular * max(1, scaling)
+			# return molecular * max(1, scaling)
+			return molecular * scaling
