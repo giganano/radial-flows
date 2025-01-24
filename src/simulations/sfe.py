@@ -10,6 +10,7 @@ class sfe(J21_sf_law):
 
 	def __call__(self, time, arg2):
 		molecular = self.molecular(time)
+		# molecular = 2
 		if self.mode in ["ifr", "gas"]:
 			# arg2 represents the gas supply in Msun
 			sigma_gas = arg2 / self.area
