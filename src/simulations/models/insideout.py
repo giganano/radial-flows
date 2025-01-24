@@ -23,7 +23,7 @@ def exponential_tau_rise(radius):
 
 
 def exponential_tau_sfh(radius):
-	return 2 * m.exp(radius / 3.25)
+	return 2 + 2 * m.exp(radius / 4.7)
 
 
 

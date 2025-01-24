@@ -30,7 +30,7 @@ CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
 # --------------- RADIAL GAS FLOWS --------------- #
-RADIAL_GAS_FLOWS = "potential_well_deepening" # None turns them off
+RADIAL_GAS_FLOWS = "angular_momentum_dilution" # None turns them off
 # RADIAL_GAS_FLOWS = None
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 
@@ -44,7 +44,7 @@ RADIAL_GAS_FLOW_DVDR = -0.05
 
 # used when RADIAL_GAS_FLOWS = "angular_momentum_dilution"
 # RADIAL_GAS_FLOW_BETA_PHI_IN = 0.5
-RADIAL_GAS_FLOW_BETA_PHI_IN = 0.6
+RADIAL_GAS_FLOW_BETA_PHI_IN = 0.8
 # RADIAL_GAS_FLOW_BETA_PHI_IN = 0.7
 # def RADIAL_GAS_FLOW_BETA_PHI_IN(r, t):
 	# return 0.3 + 0.4 * (1 - m.exp(-t / 2))

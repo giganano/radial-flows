@@ -33,7 +33,7 @@ def get_velocity_evolution(output, radius, zone_width = 0.1):
 	for i in range(len(raw)):
 		if raw[i][1] == radius:
 			time.append(raw[i][0])
-			vgas.append(raw[i][1])
+			vgas.append(raw[i][2])
 		else: pass
 	lookback = [time[-1] - t for t in time]
 	return [lookback, vgas]
