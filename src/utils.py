@@ -77,6 +77,8 @@ def mu(output, lookback, zone_width = 0.1):
 	for i in range(len(radii) - 1):
 		zone = output.zones["zone%d" % (i)]
 		neighbor = output.zones["zone%d" % (i + 1)]
+		area = np.pi * ((radii[i] + zone_width)**2 - radii[i]**2)
+		n_area = np.pi * ((radii[i + 1] + zone_width)**2 - radii[i + 1]**2)
 		if radii[i + 1] >= 15.5:
 			mu_gas.append(float("nan"))
 			mu_oxygen.append(float("nan"))
@@ -90,6 +92,13 @@ def mu(output, lookback, zone_width = 0.1):
 				zone.history["mgas"][idx] * zone_width)
 			mu += (vgas[i + 1] - vgas[i]) / (vgas[i] * zone_width)
 			mu *= -tau_star * vgas[i]
+			# mu = -tau_star * vgas[i] / radii[i] if radii[i] else float("inf")
+			# sigma_g = zone.history["mgas"][idx] / area
+			# n_sigma_g = neighbor.history["mgas"][idx] / area
+			# mu -= tau_star * vgas[i] * (n_sigma_g - sigma_g) / (
+			# 	sigma_g * zone_width)
+			# mu -= tau_star * vgas[i] * (vgas[i + 1] - vgas[i]) / (
+			# 	vgas[i] * zone_width)
 			mu_gas.append(mu)
 			mu -= tau_star * vgas[i] * (
 				neighbor.history["z(o)"][idx] - zone.history["z(o)"][idx]) / (

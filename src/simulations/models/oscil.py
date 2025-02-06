@@ -1,0 +1,22 @@
+
+from ..inputs import SFROSCIL_AMPLITUDE, SFROSCIL_PERIOD
+from .insideout import insideout
+from .normalize import normalize
+from .gradient import gradient
+from .utils import sinusoid
+import math as m
+
+
+class insideout_oscil(sinusoid, insideout):
+
+	def __init__(self, radius, dt = 0.01, dr = 0.1,
+		amplitude = SFROSCIL_AMPLITUDE, period = SFROSCIL_PERIOD, phase = 0):
+		sinusoid.__init__(self, amplitude = amplitude, period = period,
+			phase = phase)
+		insideout.__init__(self, radius, dt = dt, dr = dr)
+		self.norm *= normalize(self, gradient, radius, dt = dt, dr = dr)
+
+	def __call__(self, time):
+		return insideout.__call__(self, time) * (1 + sinusoid.__call__(
+			self, time))
+

@@ -3,7 +3,7 @@ Handles radial gas flows in these models.
 """
 
 from .._globals import MAX_SF_RADIUS, END_TIME
-from .models.utils import get_bin_number
+from .models.utils import get_bin_number, sinusoid
 from .outflows import evoldata
 from vice.toolkit.interpolation import interp_scheme_1d
 from vice.milkyway.milkyway import _MAX_RADIUS_ as MAX_RADIUS # 20 kpc
@@ -157,6 +157,24 @@ class constant(base):
 		else:
 			speed = self.speed
 		vgas = len(radii) * [speed]
+		self.write(time, radii, vgas)
+		return [radii, vgas]
+
+
+class oscillatory(base, sinusoid):
+
+	def __init__(self, average, amplitude, period, phase = 0, onset = 1,
+		dr = 0.1, dt = 0.01, outfilename = "gasvelocities.out"):
+		base.__init__(self, onset = onset, dr = dr, dt = dt,
+			outfilename = outfilename)
+		sinusoid.__init__(self, amplitude = amplitude, period = period,
+			phase = phase)
+		self.average = average
+
+	def __call__(self, time):
+		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
+		vgas = self.average + sinusoid.__call__(self, time)
+		vgas = len(radii) * [vgas]
 		self.write(time, radii, vgas)
 		return [radii, vgas]
 

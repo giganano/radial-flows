@@ -122,6 +122,17 @@ class constant:
 				type(value)))
 
 
+class sinusoid:
+
+	def __init__(self, amplitude = 1, period = 1, phase = 0):
+		self.amplitude = amplitude
+		self.period = period
+		self.phase = phase
+
+	def __call__(self, x):
+		return self.amplitude * m.sin(2 * m.pi * (x - self.phase) / self.period)
+
+
 class exponential:
 
 	r"""

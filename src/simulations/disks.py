@@ -135,6 +135,12 @@ class diskmodel(vice.milkyway):
 			if inputs.RADIAL_GAS_FLOWS == "constant":
 				engine = gasflows.constant(inputs.RADIAL_GAS_FLOW_SPEED,
 					**kwargs)
+			elif inputs.RADIAL_GAS_FLOWS == "oscillatory":
+				engine = gasflows.oscillatory(
+					inputs.RADIAL_GAS_FLOW_MEAN,
+					inputs.RADIAL_GAS_FLOW_AMPLITUDE,
+					inputs.RADIAL_GAS_FLOW_PERIOD,
+					**kwargs)
 			elif inputs.RADIAL_GAS_FLOWS == "linear":
 				engine = gasflows.linear(dvdr = inputs.RADIAL_GAS_FLOW_DVDR,
 					**kwargs)
@@ -299,6 +305,7 @@ class star_formation_history:
 		while (i + 1) * zone_width < max_radius:
 			self._radii.append((i + 0.5) * zone_width)
 			self._evol.append({
+					"oscil":		models.insideout_oscil,
 					"static": 		models.static,
 					"insideout": 	models.insideout,
 					"lateburst": 	models.lateburst,
