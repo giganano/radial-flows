@@ -72,6 +72,20 @@ def interpolate(x1, y1, x2, y2, x):
 	return (y2 - y1) / (x2 - x1) * (x - x1) + y1
 
 
+def choose(a, b):
+	r"""
+	Evaluate the mathematical operation a choose b.
+	"""
+	numerator = 1
+	denominator = 1
+	while b:
+		numerator *= a
+		denominator *= b
+		a -= 1
+		b -= 1
+	return numerator / denominator
+
+
 class constant:
 
 	r"""
@@ -131,6 +145,23 @@ class sinusoid:
 
 	def __call__(self, x):
 		return self.amplitude * m.sin(2 * m.pi * (x - self.phase) / self.period)
+
+
+class tilted_sinusoid(sinusoid):
+    
+    def __init__(self, amplitude = 1, period = 1, phase = 0, skewness = 1):
+        super().__init__(amplitude = amplitude, period = period, phase = phase)
+        self.skewness = skewness
+    
+    def __call__(self, x):
+        s = 0
+        for i in range(1, self.skewness + 1):
+            a = 2 * choose(2 * self.skewness, self.skewness - i)
+            a /= choose(2 * self.skewness, self.skewness)
+            a *= super().__call__(i * x) / i
+            # a = super().__call__(i * x) / i
+            s += a
+        return s
 
 
 class exponential:

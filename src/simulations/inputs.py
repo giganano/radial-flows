@@ -5,8 +5,9 @@ import vice
 
 
 # --------------- OSCILLATING SFR --------------- #
-SFROSCIL_AMPLITUDE = 0.5
-SFROSCIL_PERIOD = 0.2
+SFROSCIL_AMPLITUDE = 0.1
+SFROSCIL_PERIOD = 0.4
+SFROSCIL_SKEWNESS = 5
 
 
 
