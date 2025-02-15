@@ -5,9 +5,11 @@ import vice
 
 
 # --------------- OSCILLATING SFR --------------- #
-SFROSCIL_AMPLITUDE = 0.1
+SFROSCIL_AMPLITUDE = 0.5
 SFROSCIL_PERIOD = 0.4
-SFROSCIL_SKEWNESS = 5
+SFROSCIL_SKEWNESS = 1
+SFROSCIL_PHASE = 0 # perfectly in phase
+# SFROSCIL_PHASE = SFROSCIL_PERIOD / 2 # perfectly out of phase
 
 
 
@@ -37,7 +39,7 @@ CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
 # --------------- RADIAL GAS FLOWS --------------- #
-RADIAL_GAS_FLOWS = "potential_well_deepening" # None turns them off
+RADIAL_GAS_FLOWS = "oscillatory" # None turns them off
 # RADIAL_GAS_FLOWS = None
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 

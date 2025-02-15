@@ -1,5 +1,6 @@
 
-from ..inputs import SFROSCIL_AMPLITUDE, SFROSCIL_PERIOD, SFROSCIL_SKEWNESS
+from ..inputs import (SFROSCIL_AMPLITUDE, SFROSCIL_PERIOD, SFROSCIL_SKEWNESS,
+	SFROSCIL_PHASE)
 from .insideout import insideout
 from .normalize import normalize
 from .gradient import gradient
@@ -12,7 +13,7 @@ class insideout_oscil(tilted_sinusoid, insideout):
 
 	def __init__(self, radius, dt = 0.01, dr = 0.1,
 		amplitude = SFROSCIL_AMPLITUDE, period = SFROSCIL_PERIOD,
-		phase = 0, skewness = SFROSCIL_SKEWNESS):
+		phase = SFROSCIL_PHASE, skewness = SFROSCIL_SKEWNESS):
 		tilted_sinusoid.__init__(self, amplitude = amplitude, period = period,
 			phase = phase, skewness = skewness)
 		insideout.__init__(self, radius, dt = dt, dr = dr)
