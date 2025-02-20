@@ -1,6 +1,7 @@
 
 import numpy as np
 import vice
+import os
 
 
 def oh_to_12pluslog(oh, solaro = vice.solar_z["o"], mo = 15.999, Xsun = 0.73):
@@ -25,7 +26,12 @@ def get_velocity_profile(output, lookback):
 
 
 def get_velocity_evolution(output, radius, zone_width = 0.1):
-	raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
+	if os.path.exists("%s_gasvelocities.out" % (output.name)):
+		raw = np.genfromtxt("%s_gasvelocities.out" % (output.name))
+	else:
+		lookback = output.zones["zone0"].history["lookback"]
+		vgas = len(lookback) * [0.]
+		return [lookback, vgas]
 	zone = int(radius / zone_width)
 	radius = zone * zone_width # use inner edge for sake of lookup in file
 	time = []
@@ -105,6 +111,43 @@ def mu(output, lookback, zone_width = 0.1):
 				zone.history["z(o)"][idx] * zone_width)
 			mu_oxygen.append(mu)
 	return [radii, mu_gas, mu_oxygen]
+
+
+def mu_evol(output, radius, zone_width = 0.1):
+	lookback, vgas = get_velocity_evolution(output, radius,
+		zone_width = zone_width)
+	if all([v == 0 for v in vgas]):
+		mu_gas = mu_o = len(lookback) * [0.]
+		return [lookback, mu_gas, mu_o]
+	else: pass
+	_, vgas_n = get_velocity_evolution(output, radius + zone_width,
+		zone_width = zone_width)
+	zone = int(radius / zone_width)
+	neighbor = output.zones["zone%d" % (zone + 1)]
+	zone = output.zones["zone%d" % (zone)]
+	mu_gas = []
+	mu_o = []
+	for i in range(len(lookback)):
+		# idx = -1 - i
+		diff = [abs(lookback[i] - l) for l in zone.history["lookback"]]
+		idx = diff.index(min(diff))
+		if zone.history["sfr"][idx]:
+			tau_star = zone.history["mgas"][idx] / zone.history["sfr"][idx]
+			tau_star *= 1.e-9
+		else:
+			mu_gas.append(float("nan"))
+			mu_o.append(float("nan"))
+			continue
+		mu = (neighbor.history["mgas"][idx] - zone.history["mgas"][idx]) / (
+			zone.history["mgas"][idx] * zone_width)
+		mu += (vgas_n[i] - vgas[i]) / (vgas[i] * zone_width)
+		mu *= -tau_star * vgas[i]
+		mu_gas.append(mu)
+		mu -= tau_star * vgas[i] * (
+			neighbor.history["z(o)"][idx] - zone.history["z(o)"][idx]) / (
+			zone.history["z(o)"][idx] * zone_width)
+		mu_o.append(mu)
+	return [lookback, mu_gas, mu_o]
 
 
 # def mu_evolution(output, radius, zone_width = 0.1):
