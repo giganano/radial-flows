@@ -39,8 +39,8 @@ CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
 # --------------- RADIAL GAS FLOWS --------------- #
-RADIAL_GAS_FLOWS = "river" # None turns them off
-# RADIAL_GAS_FLOWS = None
+# RADIAL_GAS_FLOWS = "river" # None turns them off
+RADIAL_GAS_FLOWS = None
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 
 # used when RADIAL_GAS_FLOWS = "constant"

@@ -9,6 +9,7 @@ class sfe(J21_sf_law):
 	_KS_PLAW_INDEX_ = 1.5 # Kennicutt-Schmidt power-law index
 
 	def __call__(self, time, arg2):
+		# return 2
 		molecular = self.molecular(time)
 		# molecular = 2
 		if self.mode in ["ifr", "gas"]:
