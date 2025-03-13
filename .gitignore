@@ -5,4 +5,5 @@
 **/*.vice/**
 **/.ipynb_checkpoints/**
 **/__pycache__/**
+radial-flows-*.pdf
 
