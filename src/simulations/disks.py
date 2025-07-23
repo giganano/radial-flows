@@ -168,8 +168,9 @@ class diskmodel(vice.milkyway):
 			for i in range(self.n_zones):
 				self.zones[i].Zin = {}
 				for elem in self.zones[i].elements:
+					solar = vice.solar_z[elem]
 					kwargs = {
-						"norm": vice.solar_z[elem] * 10**inputs.CGM_FINAL_METALLICITY,
+						"norm": solar * 10**inputs.CGM_FINAL_METALLICITY,
 						"rise": inputs.CGM_METALLICITY_GROWTH_TIMESCALE,
 						"timescale": float("inf")
 					}
