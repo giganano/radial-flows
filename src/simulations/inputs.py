@@ -31,7 +31,7 @@ OUTFLOWS_CONST_ETA = 0.5
 
 
 # --------------- ACCRETION METALLICITY TIME-DEP --------------- #
-CGM_FINAL_METALLICITY = -float("inf") # -inf for zero metallicity accretion
+CGM_FINAL_METALLICITY = -0.7 # -inf for zero metallicity accretion
 CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
@@ -39,12 +39,12 @@ CGM_METALLICITY_GROWTH_TIMESCALE = 3
 
 
 # --------------- RADIAL GAS FLOWS --------------- #
-RADIAL_GAS_FLOWS = "potential_well_deepening" # None turns them off
+RADIAL_GAS_FLOWS = "constant" # None turns them off
 # RADIAL_GAS_FLOWS = None
 RADIAL_GAS_FLOW_ONSET = 1 # Gyr -- radial flow starts 1 Gyr in
 
 # used when RADIAL_GAS_FLOWS = "constant"
-RADIAL_GAS_FLOW_SPEED = -0.5 # km/s
+RADIAL_GAS_FLOW_SPEED = -1 # km/s
 # def RADIAL_GAS_FLOW_SPEED(time):
 # 	return -10 * np.exp(-time / 3)
 
