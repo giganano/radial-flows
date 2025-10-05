@@ -68,6 +68,7 @@ class insideout(modified_exponential):
 			rise = exponential_tau_rise(radius)
 		)
 		self.norm *= normalize(self, gradient, radius, dt = dt, dr = dr)
+		self.norm /= 1 + m.exp((radius - 17) / 1)
 
 	@staticmethod
 	def timescale(radius, Re = 5):

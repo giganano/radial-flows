@@ -3,8 +3,9 @@ Handles radial gas flows in these models.
 """
 
 from .._globals import MAX_SF_RADIUS, END_TIME
-from .models.utils import get_bin_number, sinusoid
+from .models.utils import get_bin_number, sinusoid, logistic
 from .outflows import evoldata
+from . import inputs
 from vice.toolkit.interpolation import interp_scheme_1d
 from vice.milkyway.milkyway import _MAX_RADIUS_ as MAX_RADIUS # 20 kpc
 from scipy.integrate import solve_ivp
@@ -57,6 +58,14 @@ class base:
 		self.onset = onset
 		self.dr = dr
 		self.dt = dt
+		# if bar:
+		# 	self.bar = barflows(inputs.BAR_SPEED,
+		# 		inneredge = inputs.BAR_INNER,
+		# 		outeredge = inputs.BAR_OUTER,
+		# 		innerscale = inputs.BAR_INNER_SCALE,
+		# 		outerscale = inputs.BAR_OUTER_SCALE)
+		# else:
+		# 	self.bar = None
 
 
 	def __enter__(self):
@@ -161,6 +170,66 @@ class constant(base):
 		return [radii, vgas]
 
 
+class steady(base, logistic):
+
+	def __init__(self, maximum, midpoint = 3, scale = 0.5,
+		onset = 1, dr = 0.1, dt = 0.01, outfilename = "gasvelocities.out"):
+		base.__init__(self, onset = onset, dr = dr, dt = dt,
+			outfilename = outfilename)
+		logistic.__init__(self, maximum = maximum, midpoint = midpoint,
+			scale = scale)
+
+	def __call__(self, time, **kwargs):
+		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
+		vgas = [logistic.__call__(self, r) for r in radii]
+		self.write(time, radii, vgas)
+		return [radii, vgas]
+
+
+class limexp(constant):
+
+	def __call__(self, time, **kwargs):
+		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
+		if callable(self.speed):
+			speed = self.speed(time, **kwargs)
+		else:
+			speed = self.speed
+		vgas = []
+		for i in range(len(radii)):
+			vgas.append(speed * (1 - np.exp(-radii[i] / 3)))
+		self.write(time, radii, vgas)
+		return [radii, vgas]
+
+
+# class steady(base):
+
+# 	def __init__(self, maximum, scale = 6,
+# 		onset = 1, dr = 0.1, dt = 0.01, outfilename = "gasvelocities.out"):
+# 		super().__init__(onset = onset, dr = dr, dt = dt,
+# 			outfilename = outfilename)
+# 		self.maximum = maximum
+# 		self.scale = scale
+
+# 	def __call__(self, time):
+# 		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
+# 		vgas = [self.maximum * (1 - np.exp(-r / self.scale)) for r in radii]
+# 		self.write(time, radii, vgas)
+# 		return [radii, vgas]
+
+
+class barflows:
+
+	def __init__(self, maximum_speed,
+		inneredge = 2, outeredge = 5, innerscale = 0.5, outerscale = 0.5):
+		self.inner = logistic(minimum = 0, maximum = maximum_speed,
+			midpoint = inneredge, scale = innerscale)
+		self.outer = logistic(minimum = maximum_speed, maximum = 0,
+			midpoint = outeredge, scale = outerscale)
+
+	def __call__(self, r):
+		return self.inner(r) * self.outer(r)
+
+
 class oscillatory(base, sinusoid):
 
 	def __init__(self, average, amplitude, period, phase = 0, onset = 1,
@@ -192,6 +261,10 @@ class linear(base):
 	def __call__(self, time):
 		radii = [self.dr * i for i in range(int(MAX_RADIUS / self.dr))]
 		vgas = [self.dvdr * r for r in radii]
+		# if self.bar is not None:
+		# 	bareffect = [self.bar(r) for r in radii]
+		# 	vgas = [a + b for a, b in zip(vgas, bareffect)]
+		# else: pass
 		self.write(time, radii, vgas)
 		return [radii, vgas]
 

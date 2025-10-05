@@ -23,6 +23,7 @@ from . import outflows
 from . import migration
 from . import models
 from . import inputs
+from . import nonmetalyields
 from . import sfe
 from .models.utils import get_bin_number, interpolate, modified_exponential
 from .models.gradient import gradient
@@ -110,6 +111,19 @@ class diskmodel(vice.milkyway):
 				if i: kwargs["evol"] = self.zones[0].eta.evol
 				self.zones[i].eta = cls(self,
 					i * zone_width + 1.e-6, **kwargs)
+			elif inputs.OUTFLOWS == "central":
+				for i in range(self.n_zones):
+					radius = zone_width * (i + 0.5)
+					self.zones[i].eta = inputs.OUTFLOWS_CENTRAL_ETA * m.exp(
+						-radius / 5)
+					# self.zones[i].eta = 0.5 * m.exp(-radius / 5)
+					# self.zones[i].eta = 1 * m.exp(-radius / 5)
+					# self.zones[i].eta = 2 * m.exp(-radius / 5)
+					# self.zones[i].eta = 1 * m.exp(-radius / 2.23)
+					### constant total eta variations
+					# self.zones[i].eta = 1 * m.exp(-radius / 2.23)
+					# self.zones[i].eta = 2 * m.exp(-radius / 1.25)
+					# self.zones[i].eta = 8 * m.exp(-radius / 0.77)
 			elif inputs.OUTFLOWS == "constant_t_and_r":
 				self.zones[i].eta = outflows.constant_t_and_r(
 					inputs.OUTFLOWS_CONST_ETA)
@@ -135,6 +149,10 @@ class diskmodel(vice.milkyway):
 			if inputs.RADIAL_GAS_FLOWS == "constant":
 				engine = gasflows.constant(inputs.RADIAL_GAS_FLOW_SPEED,
 					**kwargs)
+				# engine = gasflows.limexp(inputs.RADIAL_GAS_FLOW_SPEED,
+				# 	**kwargs)
+				# engine = gasflows.steady(inputs.RADIAL_GAS_FLOW_SPEED,
+				# 	**kwargs)
 			elif inputs.RADIAL_GAS_FLOWS == "oscillatory":
 				engine = gasflows.oscillatory(
 					inputs.RADIAL_GAS_FLOW_MEAN,
